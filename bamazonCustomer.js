@@ -56,42 +56,53 @@ function startShopping() {
 
 		}])
 		.then(function(answers) {
-			var purchaseID = answers.id;
+			var purchaseID = parseInt(answers.id);
 			var purchaseQty = parseInt(answers.qty);
 
-			connection.query("SELECT * FROM products WHERE item_id=?", 
-				[parseInt(purchaseID)], function(err, res) {
-					if (err) throw err;
+			//since these two values will be NaN if a number isn't entered
+			if (!purchaseID || !purchaseQty) {
+				console.log ("Please enter a valid numerical ID and quantity");
+				startShopping();
+			} else {
+				confirmPurchase(purchaseID, purchaseQty);
+			}
+			
+		});
+}
 
-					if (res.length === 0) {
-						console.log("Sorry, no item matching ID " + purchaseID);
-						startShopping();
+function confirmPurchase(id, qty) {
+	connection.query("SELECT * FROM products WHERE item_id=?", 
+		[id], function(err, res) {
+			if (err) throw err;
 
-					} else if (purchaseQty > res[0].stock_quantity) {
-						console.log("Insufficient quantity of " + res[0].product_name);
-						startShopping();
-					} else {
-						console.log("Completing purchase...");
-						connection.query(
-							"UPDATE products SET ? WHERE ?",
-							[
-								{
-									stock_quantity: res[0].stock_quantity - purchaseQty
-								},
-								{
-									item_id: purchaseID
-								}
-							],
-							function(err, result) {
-								var total = (parseInt(purchaseQty) * parseFloat(res[0].price)).toFixed(2);
+			if (res.length === 0) {
+				console.log("Sorry, no item matching ID " + id);
+				startShopping();
 
-								console.log("Purchased " + purchaseQty + " of " + res[0].product_name + ".");
-								console.log("Total: $" + total);
+			} else if (qty > res[0].stock_quantity) {
+				console.log("Insufficient quantity of " + res[0].product_name);
+				startShopping();
+			} else {
+				console.log("Completing purchase...");
+				connection.query(
+					"UPDATE products SET ? WHERE ?",
+					[
+						{
+							stock_quantity: res[0].stock_quantity - qty
+						},
+						{
+							item_id: id
+						}
+					],
+					function(err, result) {
+						var total = (parseInt(qty) * parseFloat(res[0].price)).toFixed(2);
 
-								nextAction();
-							});
-					}
-				})
+						console.log("Purchased " + qty + " of " + res[0].product_name + ".");
+						console.log("Total: $" + total);
+
+						nextAction();
+					});
+			}
 		});
 }
 
@@ -107,6 +118,7 @@ function nextAction() {
 			if (answer.again === "YES") {
 				startShopping();
 			} else {
+				console.log("Thank you for shopping with us!");
 				connection.end();
 			}
 		})
